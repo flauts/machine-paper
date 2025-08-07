@@ -39,9 +39,17 @@ model_name = "distilroberta-base"
 #%% md
 # # tokenize
 #%%
+dataset["test"]
+#%%
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 def tokenize_function(examples): #padding false becase of data collator later
+    for text in examples["text"]:
+        if text is not None and text != "":
+            continue
+        else:
+            print(text)
+            return
     return tokenizer(examples["text"], padding=False, truncation=True, max_length=200)
 
 # Apply the tokenizer to the dataset
@@ -86,7 +94,7 @@ training_args = TrainingArguments(
     learning_rate=5e-5,              # Start with a small learning rate
     per_device_train_batch_size=16,  # Batch size per GPU
     per_device_eval_batch_size=16,
-    num_train_epochs=3,              # Number of epochs
+    num_train_epochs=7,              # Number of epochs
     weight_decay=0.01,               # Regularization
     save_total_limit=2,              # Limit checkpoints to save space
     load_best_model_at_end=True,     # Automatically load the best checkpoint
@@ -160,7 +168,7 @@ print(classification_report(tokenized_datasets["test"]["label"], predicted_label
 
 # Confusion matrix
 cm = confusion_matrix(tokenized_datasets["test"]["label"], predicted_labels)
-disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["NO CB", "sexual","race", "religion"])
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["nocb", "gender","ethnicity", "religion", "age","other"])
 disp.plot(cmap="Blues")  # Optional: set a color map
 plt.tight_layout()
 plt.savefig("confusion_matrix.png", dpi=300)  # You can change the name or dpi as needed
