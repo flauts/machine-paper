@@ -186,5 +186,5 @@ import os
 # Save the trained model and tokenizer
 os.makedirs("./bert_model", exist_ok=True)
 trainer.save_model("../../models/distil_roberta")
-tokenizer.save_pretrain("../../models/distil_roberta")
+tokenizer.save_pretrained("../../models/distil_roberta")
 print("Model saved successfully!")
