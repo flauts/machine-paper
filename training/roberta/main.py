@@ -50,7 +50,7 @@ print(tokenized_datasets["train"][0])
 #%%
 from transformers import AutoModelForSequenceClassification
 
-metric = evaluate.load("roc_auc","multiclass")
+metric = evaluate.load("f1")
 def model_init():
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=6)
     print(model.config)
@@ -71,7 +71,7 @@ study = optuna.create_study(
 
 # set the wandb project where this run will be logged
 
-project_name = f"cyberbullying-{model_name}-finetuning"
+project_name = f"cyberbullying-{model_name}-finetuning-f1"
 os.environ["WANDB_PROJECT"]=project_name
 
 # save your trained model checkpoint to wandb
@@ -90,12 +90,12 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from transformers import Trainer, TrainingArguments
 
 def compute_metrics(eval_pred):
-    logits, labels = eval_pred
-    probs = torch.softmax(torch.tensor(logits), dim=-1).numpy()
-    return metric.compute(prediction_scores=probs, references=labels, multi_class="ovr")
+    predictions = eval_pred.predictions.argmax(axis=-1)
+    labels = eval_pred.label_ids
+    return metric.compute(predictions = predictions, references=labels, average="macro")
 
 def compute_objective(metrics):
-    return metrics["eval_roc_auc"]
+    return metrics["eval_f1"]
 
 
 wandb.init(project=project_name, name=f"{model_name}-opt-study")
@@ -110,7 +110,7 @@ training_args = TrainingArguments(
     report_to="wandb",
     logging_dir="./logs",
     run_name=f"{model_name}-opt-study",
-    metric_for_best_model="eval_roc_auc",
+    metric_for_best_model="eval_f1",
     greater_is_better=True,
 )
 
@@ -197,7 +197,7 @@ training_args = TrainingArguments(
     warmup_steps=best_run.hyperparameters["warmup_steps"],
     report_to="wandb",
     run_name="final_run_with_best_hparams",
-    metric_for_best_model="eval_roc_auc",
+    metric_for_best_model="eval_f1",
     greater_is_better=True,
 )
 
