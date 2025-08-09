@@ -146,6 +146,7 @@ training_args = TrainingArguments(
     eval_strategy="epoch",
     save_strategy="epoch",
     load_best_model_at_end=True,
+    save_total_limit=3,
     logging_strategy="epoch",
     num_train_epochs=3,
     report_to="wandb",
