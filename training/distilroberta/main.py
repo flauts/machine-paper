@@ -151,7 +151,7 @@ training_args = TrainingArguments(
     num_train_epochs=3,
     report_to="wandb",
     logging_dir="./logs",
-    # run_name=f"{model_name}-opt-study",
+    run_name=f"{model_name}-opt-study",
 )
 
 
