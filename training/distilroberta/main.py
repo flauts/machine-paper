@@ -101,7 +101,7 @@ study = optuna.create_study(
 os.environ["WANDB_PROJECT"]="cyberbullying-bert-based-finetuning"
 
 # save your trained model checkpoint to wandb
-os.environ["WANDB_LOG_MODEL"]="false"
+os.environ["WANDB_LOG_MODEL"]="checkpoint"
 
 # turn off watch to log faster
 os.environ["WANDB_WATCH"]="false"
@@ -151,7 +151,7 @@ training_args = TrainingArguments(
     num_train_epochs=3,
     report_to="wandb",
     logging_dir="./logs",
-    run_name=f"{model_name}-opt-study",
+    # run_name=f"{model_name}-opt-study",
 )
 
 
