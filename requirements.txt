@@ -1,0 +1,12 @@
+pandas==2.3.1
+scikit-learn==1.7.1
+joblib==1.5.1
+transformers==4.54.0
+datasets==4.0.0
+torch==2.7.1
+numpy==2.3.2
+evaluate==0.4.5
+optuna==4.4.0
+wandb==0.21.1
+matplotlib==3.10.3
+accelerate==1.10.0
