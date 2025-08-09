@@ -1,15 +1,7 @@
 #%%
-import pandas as pd
-from sklearn.preprocessing import LabelEncoder
-from sklearn.utils import shuffle
-from joblib import dump, load
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoModel, set_seed
-from datasets import load_dataset
+
+from transformers import AutoTokenizer, set_seed
 import torch
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from joblib import dump
-import numpy as np
 import evaluate
 #%%
 set_seed(42)
@@ -56,33 +48,11 @@ tokenized_datasets = dataset.map(tokenize_function, batched=True)
 # Inspect tokenized samples
 print(tokenized_datasets["train"][0])
 #%%
-metric = evaluate.load("recall")
-
-
+metric = evaluate.load("roc_auc","multiclass")
 def model_init():
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=6)
     print(model.config)
     return model
-#%% md
-# # How to Custom Model
-#%%
-# import torch.nn as nn
-#
-# class CustomBERTModel(nn.Module):
-#     def __init__(self, pretrained_model_name, num_labels):
-#         super(CustomBERTModel, self).__init__()
-#         self.bert = AutoModel.from_pretrained(pretrained_model_name)
-#         self.dropout = nn.Dropout(0.3)
-#         self.fc = nn.Linear(self.bert.config.hidden_size, num_labels)
-#
-#     def forward(self, input_ids, attention_mask):
-#         output = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-#         pooled_output = self.dropout(output[1])  # Applying dropout
-#         logits = self.fc(pooled_output)  # Adding a fully connected layer
-#         return logits
-#
-# # Initialize the custom model
-# custom_model = CustomBERTModel("bert-base-uncased", num_labels=4)
 #%% md
 # ## hyperparameter tuning
 #%%
@@ -98,10 +68,12 @@ study = optuna.create_study(
 )
 
 # set the wandb project where this run will be logged
-os.environ["WANDB_PROJECT"]="cyberbullying-bert-based-finetuning"
+
+project_name = f"cyberbullying-{model_name}-finetuning"
+os.environ["WANDB_PROJECT"]=project_name
 
 # save your trained model checkpoint to wandb
-os.environ["WANDB_LOG_MODEL"]="false"
+os.environ["WANDB_LOG_MODEL"]="end"
 
 # turn off watch to log faster
 os.environ["WANDB_WATCH"]="false"
@@ -115,43 +87,29 @@ import wandb
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from transformers import Trainer, TrainingArguments
 
-
 def compute_metrics(eval_pred):
-    logits, labels = eval_pred
-    predictions = np.argmax(logits, axis=-1)
-
-    # Calculate accuracy
-    accuracy = accuracy_score(labels, predictions)
-
-    # Calculate precision, recall, f1 with macro averaging (treats all classes equally)
-    precision, recall, f1, _ = precision_recall_fscore_support(
-        labels, predictions, average='macro', zero_division=0
-    )
-
-    return {
-        'accuracy': accuracy,
-        'precision': precision,
-        'recall': recall,
-        'f1': f1
-    }
+    predictions = eval_pred.predictions.argmax(axis=-1)
+    labels = eval_pred.label_ids
+    return metric.compute(prediction_scores=predictions, references=labels,multi_class="ovr")
 
 def compute_objective(metrics):
-    return metrics["eval_recall"]
+    return metrics["eval_roc_auc"]
 
 
-wandb.init(project="cyberbullying-bert-based-finetuning", name=f"{model_name}-opt-study")
+wandb.init(project=project_name, name=f"{model_name}-opt-study")
 
 training_args = TrainingArguments(
     output_dir="./results",
     eval_strategy="epoch",
     save_strategy="epoch",
     load_best_model_at_end=True,
-    save_total_limit=3,
     logging_strategy="epoch",
-    num_train_epochs=3,
+    num_train_epochs=5,
     report_to="wandb",
     logging_dir="./logs",
     run_name=f"{model_name}-opt-study",
+    metric_for_best_model="eval_roc_auc",
+    greater_is_better=True,
 )
 
 
@@ -218,69 +176,71 @@ ax3.figure.savefig("param_importances.png")
 #%% md
 # # Training optimized
 #%%
-# from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
-#
-# # Define the model
-# model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=6)
-#
-# # Load best hyperparameters (already defined earlier as best_hparams)
-# training_args = TrainingArguments(
-#     output_dir="./final_model",
-#     learning_rate=best_hparams["learning_rate"],
-#     per_device_train_batch_size=best_hparams["per_device_train_batch_size"],
-#     weight_decay=best_hparams["weight_decay"],
-#     eval_strategy="epoch",
-#     save_strategy="epoch",
-#     load_best_model_at_end=True,
-#     logging_strategy="epoch",
-#     num_train_epochs=best_hparams["num_train_epochs"],
-#     warmup_steps=best_hparams["warmup_steps"],
-#     report_to="wandb",
-#     run_name="final_run_with_best_hparams",
-# )
-#
-# # Create Trainer
-# trainer = Trainer(
-#     model=model,
-#     args=training_args,
-#     train_dataset=tokenized_datasets["train"],
-#     eval_dataset=tokenized_datasets["valid"],
-#     processing_class=tokenizer,
-#     data_collator=data_collator,
-#     compute_metrics=compute_metrics,
-# )
-# from transformers import EarlyStoppingCallback
-#
-# trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=2))
-# # Train
-# trainer.train()
-#
-# # Save the model
-# trainer.save_model("./final_model")
-#%%
-# from matplotlib import pyplot as plt
-# from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
-#
-# # Generate predictions
-# predictions = trainer.predict(tokenized_datasets["test"])
-# predicted_labels = predictions.predictions.argmax(axis=-1)
-#
-# # Classification report
-# print(classification_report(tokenized_datasets["test"]["label"], predicted_labels))
-#
-# # Confusion matrix
-# cm = confusion_matrix(tokenized_datasets["test"]["label"], predicted_labels)
-# disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["nocb", "gender","ethnicity", "religion", "age","other"])
-# disp.plot(cmap="Blues")  # Optional: set a color map
-# plt.tight_layout()
-# plt.savefig("confusion_matrix.png", dpi=300)  # You can change the name or dpi as needed
-# plt.close()  # Close the plot to free memory if you're in a loop
-#%%
-# # Inspect misclassified samples
-# for idx, (pred, label) in enumerate(zip(predicted_labels, tokenized_datasets["test"]["label"])):
-#     if pred != label:
-#         print(f"Index: {idx}, Predicted: {pred}, Actual: {label}")
-#         print(tokenized_datasets["test"][idx]["text"])
-#%%
-tokenizer.save_pretrained("./final_model")
+from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
+
+# Define the model
+model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=6)
+
+# Load best hyperparameters (already defined earlier as best_hparams)
+training_args = TrainingArguments(
+    output_dir="./final_model",
+    learning_rate=best_run["learning_rate"],
+    per_device_train_batch_size=best_run["per_device_train_batch_size"],
+    weight_decay=best_run["weight_decay"],
+    eval_strategy="epoch",
+    save_strategy="epoch",
+    load_best_model_at_end=True,
+    logging_strategy="epoch",
+    num_train_epochs=best_run["num_train_epochs"],
+    warmup_steps=best_run["warmup_steps"],
+    report_to="wandb",
+    run_name="final_run_with_best_hparams",
+    metric_for_best_model="eval_roc_auc",
+    greater_is_better=True,
+)
+
+# Create Trainer
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=tokenized_datasets["train"],
+    eval_dataset=tokenized_datasets["valid"],
+    processing_class=tokenizer,
+    data_collator=data_collator,
+    compute_metrics=compute_metrics,
+)
+from transformers import EarlyStoppingCallback
+
+trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=2))
+# Train
+trainer.train()
+
+# Save the model
+trainer.save_model("./final_model")
 print("Model saved successfully!")
+#%%
+from matplotlib import pyplot as plt
+from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
+
+# Generate predictions
+predictions = trainer.predict(tokenized_datasets["test"])
+predicted_labels = predictions.predictions.argmax(axis=-1)
+
+# Classification report
+print(classification_report(tokenized_datasets["test"]["label"], predicted_labels))
+
+# Confusion matrix
+cm = confusion_matrix(tokenized_datasets["test"]["label"], predicted_labels)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["nocb", "gender","ethnicity", "religion", "age","other"])
+disp.plot(cmap="Blues")  # Optional: set a color map
+plt.tight_layout()
+plt.savefig("confusion_matrix.png", dpi=300)  # You can change the name or dpi as needed
+plt.close()  # Close the plot to free memory if you're in a loop
+#%%
+# Inspect misclassified samples
+for idx, (pred, label) in enumerate(zip(predicted_labels, tokenized_datasets["test"]["label"])):
+    if pred != label:
+        print(f"Index: {idx}, Predicted: {pred}, Actual: {label}")
+        print(tokenized_datasets["test"][idx]["text"])
+#%%
+print("All done!")
