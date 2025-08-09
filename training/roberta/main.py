@@ -48,6 +48,8 @@ tokenized_datasets = dataset.map(tokenize_function, batched=True)
 # Inspect tokenized samples
 print(tokenized_datasets["train"][0])
 #%%
+from transformers import AutoModelForSequenceClassification
+
 metric = evaluate.load("roc_auc","multiclass")
 def model_init():
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=6)
@@ -88,9 +90,9 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from transformers import Trainer, TrainingArguments
 
 def compute_metrics(eval_pred):
-    predictions = eval_pred.predictions.argmax(axis=-1)
-    labels = eval_pred.label_ids
-    return metric.compute(prediction_scores=predictions, references=labels,multi_class="ovr")
+    logits, labels = eval_pred
+    probs = torch.softmax(torch.tensor(logits), dim=-1).numpy()
+    return metric.compute(prediction_scores=probs, references=labels, multi_class="ovr")
 
 def compute_objective(metrics):
     return metrics["eval_roc_auc"]
