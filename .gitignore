@@ -1,1 +1,4 @@
 /data/1035208186745081928.json
+/training/roberta/results/
+/training/roberta/wandb/
+/training/roberta/optuna_trials.db
