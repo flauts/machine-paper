@@ -1,5 +1,5 @@
 #%%
-
+from optuna.samplers import TPESampler
 from transformers import AutoTokenizer, set_seed
 import torch
 import evaluate
@@ -64,7 +64,7 @@ import os
 storage = RDBStorage("sqlite:///optuna_trials.db")
 
 study = optuna.create_study(
-    study_name=f"{model_name}-opt-study", direction="maximize", storage=storage, load_if_exists=True
+    study_name=f"{model_name}-opt-study", direction="maximize", storage=storage, load_if_exists=True, sampler=TPESampler(seed=42)
 )
 
 # set the wandb project where this run will be logged
