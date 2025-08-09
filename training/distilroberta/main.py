@@ -94,7 +94,7 @@ import os
 storage = RDBStorage("sqlite:///optuna_trials.db")
 
 study = optuna.create_study(
-    study_name="distilroberta-opt-study", direction="maximize", storage=storage, load_if_exists=True
+    study_name=f"{model_name}-opt-study", direction="maximize", storage=storage, load_if_exists=True
 )
 
 # set the wandb project where this run will be logged
@@ -139,7 +139,7 @@ def compute_objective(metrics):
     return metrics["eval_recall"]
 
 
-wandb.init(project="cyberbullying-bert-based-finetuning", name="distilroberta-opt-study")
+wandb.init(project="cyberbullying-bert-based-finetuning", name=f"{model_name}-opt-study")
 
 training_args = TrainingArguments(
     output_dir="./results",
@@ -181,7 +181,7 @@ best_run = trainer.hyperparameter_search(
     hp_space=optuna_hp_space,
     n_trials=10,
     compute_objective=compute_objective,
-    study_name="distilroberta-opt-study",
+    study_name=f"{model_name}-opt-study",
     storage="sqlite:///optuna_trials.db",
     load_if_exists=True,
 )
@@ -199,7 +199,7 @@ import matplotlib.pyplot as plt
 # Load the study from RDB storage
 storage = optuna.storages.RDBStorage("sqlite:///optuna_trials.db")
 
-study = optuna.load_study(study_name="distilroberta-opt-study", storage=storage)
+study = optuna.load_study(study_name=f"{model_name}-opt-study", storage=storage)
 
 # Plot optimization history
 ax1 = plot_optimization_history(study)
