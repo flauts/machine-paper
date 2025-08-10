@@ -5,3 +5,10 @@
 /models/
 /testing/distilroberta/wandb/
 /testing/distilroberta/tmp_trainer/
+/feature_extraction/tfidf/test_labels.joblib
+/feature_extraction/tfidf/test_tfidf.joblib
+/feature_extraction/tfidf/tfidf_vectorizer.joblib
+/feature_extraction/tfidf/train_labels.joblib
+/feature_extraction/tfidf/train_tfidf.joblib
+/feature_extraction/tfidf/valid_labels.joblib
+/feature_extraction/tfidf/valid_tfidf.joblib
